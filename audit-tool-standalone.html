@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Audit Site Web</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #F5F3EE;
+    --surface: #FFFFFF;
+    --border: #E0DDD6;
+    --text: #1A1917;
+    --muted: #7A786F;
+    --accent: #2C2C2A;
+    --red: #C84B3A;
+    --amber: #D4820A;
+    --green: #3B6D11;
+    --red-bg: #FCEBEB;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 48px 16px; }
+  .container { max-width: 640px; margin: 0 auto; }
+  header { margin-bottom: 40px; }
+  header h1 { font-family: 'DM Serif Display', serif; font-size: 32px; font-weight: 400; letter-spacing: -0.5px; margin-bottom: 6px; }
+  header p { font-size: 14px; color: var(--muted); font-weight: 300; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; margin-bottom: 16px; }
+  .api-card { background: #FFFBF0; border: 1px solid #F0E6C0; border-radius: 12px; padding: 20px 28px; margin-bottom: 16px; display: flex; align-items: center; gap: 14px; }
+  .api-card label { font-size: 12px; font-weight: 500; color: #A07820; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
+  .api-card input { flex: 1; border: 1px solid #E0D4A0; border-radius: 8px; padding: 9px 14px; font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text); background: #FFFDF5; outline: none; font-family: monospace; }
+  .api-card input:focus { border-color: #C0A840; }
+  .api-note { font-size: 11px; color: #A07820; margin-top: 6px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .field:last-child { margin-bottom: 0; }
+  label { font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  input[type=text], input[type=url] { border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; font-size: 15px; font-family: 'DM Sans', sans-serif; color: var(--text); background: var(--bg); outline: none; transition: border-color 0.15s; width: 100%; }
+  input[type=text]:focus, input[type=url]:focus { border-color: var(--accent); background: #fff; }
+  .btn { width: 100%; padding: 14px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; font-family: 'DM Sans', sans-serif; cursor: pointer; margin-top: 20px; letter-spacing: 0.02em; transition: opacity 0.15s; }
+  .btn:hover { opacity: 0.85; }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-outline { background: transparent; color: var(--accent); border: 1px solid var(--border); margin-top: 12px; }
+  .btn-outline:hover { background: var(--bg); opacity: 1; }
+  .status { text-align: center; font-size: 13px; color: var(--muted); padding: 10px 0 0; min-height: 24px; }
+  .result { display: none; }
+  .result.show { display: block; }
+  .section-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 14px; }
+  .score-hero { display: flex; align-items: baseline; gap: 6px; margin-bottom: 20px; }
+  .score-big { font-family: 'DM Serif Display', serif; font-size: 52px; line-height: 1; color: var(--text); }
+  .score-denom { font-size: 18px; color: var(--muted); font-weight: 300; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 24px; }
+  .tag { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; background: var(--red-bg); color: var(--red); }
+  .criteria { display: flex; flex-direction: column; gap: 10px; }
+  .criterion { display: flex; align-items: center; gap: 12px; }
+  .crit-name { font-size: 13px; color: var(--text); flex: 1; }
+  .bar-wrap { width: 100px; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; flex-shrink: 0; }
+  .bar-fill { height: 100%; border-radius: 3px; }
+  .crit-score { font-size: 12px; font-weight: 500; color: var(--muted); min-width: 26px; text-align: right; }
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+  .issues { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .issue { display: flex; gap: 10px; font-size: 14px; line-height: 1.5; color: var(--text); font-weight: 300; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; }
+  .dot.bad { background: var(--red); }
+  .dot.ok { background: var(--amber); }
+  .pitch-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; font-size: 14px; line-height: 1.7; color: var(--text); font-weight: 300; white-space: pre-wrap; }
+  .loader { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (max-width: 480px) { .grid-2 { grid-template-columns: 1fr; } .api-card { flex-direction: column; align-items: flex-start; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Audit de site web</h1>
+    <p>Analyse IA · Rapport PDF personnalisé</p>
+  </header>
+
+  <div class="api-card">
+    <div style="flex:1">
+      <label for="apikey">Clé API Anthropic</label>
+      <input type="password" id="apikey" placeholder="sk-ant-..." autocomplete="off" />
+      <div class="api-note">Usage privé uniquement · <a href="https://console.anthropic.com" target="_blank" style="color:#A07820">Obtenir une clé</a></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="grid-2">
+      <div class="field">
+        <label>Nom de l'entreprise</label>
+        <input type="text" id="company" placeholder="Le Boucanier" />
+      </div>
+      <div class="field">
+        <label>Secteur d'activité</label>
+        <input type="text" id="sector" placeholder="Restaurant" />
+      </div>
+    </div>
+    <div class="field">
+      <label>URL du site à auditer</label>
+      <input type="url" id="url" placeholder="https://www.exemple.fr" />
+    </div>
+    <div class="field">
+      <label>Ton prénom</label>
+      <input type="text" id="sender" placeholder="François" />
+    </div>
+    <button class="btn" id="auditBtn" onclick="runAudit()">Générer l'audit</button>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="result card" id="resultCard">
+    <div class="section-label">Score global</div>
+    <div class="score-hero">
+      <span class="score-big" id="globalScore">—</span>
+      <span class="score-denom">/ 100</span>
+    </div>
+    <div class="tags" id="tags"></div>
+    <div class="section-label">Critères</div>
+    <div class="criteria" id="criteria"></div>
+    <div class="divider"></div>
+    <div class="section-label">Problèmes détectés</div>
+    <ul class="issues" id="issues"></ul>
+    <div class="divider"></div>
+    <div class="section-label">Message de prospection</div>
+    <div class="pitch-box" id="pitch"></div>
+    <button class="btn btn-outline" onclick="downloadPDF()">Télécharger le PDF</button>
+  </div>
+</div>
+
+<script>
+let auditData = null;
+
+function scoreColor(s) {
+  if (s >= 70) return '#639922';
+  if (s >= 40) return '#D4820A';
+  return '#C84B3A';
+}
+
+async function runAudit() {
+  const apiKey = document.getElementById('apikey').value.trim();
+  const company = document.getElementById('company').value.trim();
+  const url = document.getElementById('url').value.trim();
+  const sector = document.getElementById('sector').value.trim();
+  const sender = document.getElementById('sender').value.trim();
+
+  if (!apiKey) { document.getElementById('status').textContent = 'Entre ta clé API Anthropic.'; return; }
+  if (!company || !url) { document.getElementById('status').textContent = 'Remplis le nom et l\'URL.'; return; }
+
+  const btn = document.getElementById('auditBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loader"></span>Analyse en cours…';
+  document.getElementById('status').textContent = 'Visite du site et analyse IA…';
+  document.getElementById('resultCard').classList.remove('show');
+
+  const prompt = `Tu es un expert en web design et UX. Analyse le site web suivant pour une entreprise nommée "${company}" dans le secteur "${sector || 'non précisé'}".
+URL : ${url}
+
+Génère un audit détaillé au format JSON strict (sans markdown, sans backticks), avec cette structure exacte :
+{
+  "globalScore": <nombre entre 0 et 100>,
+  "criteria": [
+    {"name": "Design & modernité", "score": <0-100>},
+    {"name": "Mobile & responsive", "score": <0-100>},
+    {"name": "Appels à l'action", "score": <0-100>},
+    {"name": "Vitesse perçue", "score": <0-100>},
+    {"name": "Contenu & clarté", "score": <0-100>}
+  ],
+  "issues": [
+    {"severity": "bad" ou "ok", "text": "<description du problème>"}
+  ],
+  "tags": ["<tag court>"],
+  "pitch": "<email de prospection court et percutant, 4-5 phrases, en français, naturel et personnalisé pour ${company}. Mentionne La Cour de la Semeuse à Schiltigheim comme référence. Signe avec le prénom ${sender || 'François'}>"
+}
+Sois réaliste et précis. Maximum 5 issues, maximum 4 tags.`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'web-search-2025-03-05'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error.message);
+    const text = data.content.map(b => b.type === 'text' ? b.text : '').join('');
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('Réponse invalide, réessaie.');
+    auditData = { ...JSON.parse(match[0]), company, url, sector, sender };
+    renderResult(auditData);
+    document.getElementById('status').textContent = '';
+  } catch(e) {
+    document.getElementById('status').textContent = 'Erreur : ' + e.message;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Générer l\'audit';
+}
+
+function renderResult(d) {
+  document.getElementById('globalScore').textContent = d.globalScore;
+  document.getElementById('tags').innerHTML = (d.tags || []).map(t => `<span class="tag">${t}</span>`).join('');
+  document.getElementById('criteria').innerHTML = (d.criteria || []).map(c => `
+    <div class="criterion">
+      <span class="crit-name">${c.name}</span>
+      <div class="bar-wrap"><div class="bar-fill" style="width:${c.score}%;background:${scoreColor(c.score)}"></div></div>
+      <span class="crit-score">${c.score}</span>
+    </div>`).join('');
+  document.getElementById('issues').innerHTML = (d.issues || []).map(i =>
+    `<li class="issue"><div class="dot ${i.severity}"></div><span>${i.text}</span></li>`).join('');
+  document.getElementById('pitch').textContent = d.pitch || '';
+  document.getElementById('resultCard').classList.add('show');
+}
+
+function downloadPDF() {
+  if (!auditData) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const d = auditData;
+  const W = 210, M = 20, CW = W - M * 2;
+
+  doc.setFillColor(245, 243, 238);
+  doc.rect(0, 0, W, 48, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(24); doc.setTextColor(26, 25, 23);
+  doc.text('Audit de site web', M, 22);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(120, 118, 111);
+  doc.text(d.company + (d.sector ? ' · ' + d.sector : ''), M, 31);
+  doc.setFontSize(9); doc.text(d.url, M, 39);
+
+  const sc = d.globalScore;
+  const col = sc >= 70 ? [59,109,17] : sc >= 40 ? [212,130,10] : [200,75,58];
+  doc.setFillColor(...col);
+  doc.roundedRect(W-M-24, 14, 24, 22, 3, 3, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(20); doc.setTextColor(255,255,255);
+  doc.text(String(sc), W-M-12, 26, {align:'center'});
+  doc.setFontSize(8); doc.text('/ 100', W-M-12, 32, {align:'center'});
+
+  let y = 58;
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(122,120,111);
+  doc.text('CRITÈRES ANALYSÉS', M, y); y += 6;
+  (d.criteria||[]).forEach(c => {
+    doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(26,25,23);
+    doc.text(c.name, M, y);
+    doc.setFillColor(224,221,214);
+    doc.roundedRect(M+72, y-3.5, 55, 4, 2, 2, 'F');
+    const bc = c.score>=70?[99,153,34]:c.score>=40?[212,130,10]:[200,75,58];
+    doc.setFillColor(...bc);
+    doc.roundedRect(M+72, y-3.5, Math.max(2, Math.round(55*c.score/100)), 4, 2, 2, 'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(122,120,111);
+    doc.text(String(c.score), M+132, y, {align:'right'});
+    y += 7;
+  });
+
+  y += 4;
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(122,120,111);
+  doc.text('PROBLÈMES DÉTECTÉS', M, y); y += 6;
+  (d.issues||[]).forEach(issue => {
+    const c = issue.severity==='bad'?[200,75,58]:[212,130,10];
+    doc.setFillColor(...c); doc.circle(M+2, y-1.5, 1.8, 'F');
+    doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(26,25,23);
+    const lines = doc.splitTextToSize(issue.text, CW-8);
+    doc.text(lines, M+6, y);
+    y += lines.length*5+2;
+  });
+
+  y += 4;
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(122,120,111);
+  doc.text('MESSAGE DE PROSPECTION', M, y); y += 6;
+  doc.setFillColor(245,243,238);
+  const pl = doc.splitTextToSize(d.pitch||'', CW-10);
+  doc.roundedRect(M, y, CW, pl.length*5+12, 3, 3, 'F');
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(26,25,23);
+  doc.text(pl, M+5, y+8);
+
+  doc.setFontSize(8); doc.setTextColor(160,158,150);
+  doc.text('Rapport généré par '+(d.sender||'François')+' · '+new Date().toLocaleDateString('fr-FR'), M, 287);
+  doc.save('audit-'+d.company.toLowerCase().replace(/\s+/g,'-')+'.pdf');
+}
+</script>
+</body>
+</html>
